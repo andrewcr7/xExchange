@@ -5,94 +5,95 @@ function Get-TargetResource
     [OutputType([System.Collections.Hashtable])]
     param
     (
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.String]
         $Identity,
 
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.Management.Automation.PSCredential]
         [System.Management.Automation.Credential()]
         $Credential,
 
+        [Parameter()]
         [System.Boolean]
         $AllowServiceRestart = $false,
 
+        [Parameter()]
         [System.String]
         $DomainController,
 
+        [Parameter()]
         [System.String]
         $ExternalUrl,
 
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.String[]]
         $IISAuthenticationMethods,
 
+        [Parameter()]
         [System.String]
         $InternalUrl
     )
 
-    #Load helper module
-    Import-Module "$((Get-Item -LiteralPath "$($PSScriptRoot)").Parent.Parent.FullName)\Misc\xExchangeCommon.psm1" -Verbose:0
-
-    LogFunctionEntry -Parameters @{"Identity" = $Identity} -VerbosePreference $VerbosePreference
+    LogFunctionEntry -Parameters @{"Identity" = $Identity} -Verbose:$VerbosePreference
 
     #Establish remote Powershell session
-    GetRemoteExchangeSession -Credential $Credential -CommandsToLoad "Get-MapiVirtualDirectory" -VerbosePreference $VerbosePreference
+    GetRemoteExchangeSession -Credential $Credential -CommandsToLoad "Get-MapiVirtualDirectory" -Verbose:$VerbosePreference
 
     $vdir = GetMapiVirtualDirectory @PSBoundParameters
 
     if ($null -ne $vdir)
     {
         $returnValue = @{
-            Identity = $Identity
-            IISAuthenticationMethods = $vdir.IISAuthenticationMethods
-            ExternalUrl = $vdir.ExternalUrl.AbsoluteUri
-            InternalUrl = $vdir.InternalUrl.AbsoluteUri
+            Identity                 = [System.String] $Identity
+            IISAuthenticationMethods = [System.String[]] $vdir.IISAuthenticationMethods
+            ExternalUrl              = [System.String] $vdir.ExternalUrl.AbsoluteUri
+            InternalUrl              = [System.String] $vdir.InternalUrl.AbsoluteUri
         }
     }
 
     $returnValue
 }
 
-
 function Set-TargetResource
 {
     [CmdletBinding()]
     param
     (
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.String]
         $Identity,
 
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.Management.Automation.PSCredential]
         [System.Management.Automation.Credential()]
         $Credential,
 
+        [Parameter()]
         [System.Boolean]
         $AllowServiceRestart = $false,
 
+        [Parameter()]
         [System.String]
         $DomainController,
 
+        [Parameter()]
         [System.String]
         $ExternalUrl,
 
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.String[]]
         $IISAuthenticationMethods,
 
+        [Parameter()]
         [System.String]
         $InternalUrl
     )
 
-    #Load helper module
-    Import-Module "$((Get-Item -LiteralPath "$($PSScriptRoot)").Parent.Parent.FullName)\Misc\xExchangeCommon.psm1" -Verbose:0
-
-    LogFunctionEntry -Parameters @{"Identity" = $Identity} -VerbosePreference $VerbosePreference
+    LogFunctionEntry -Parameters @{"Identity" = $Identity} -Verbose:$VerbosePreference
 
     #Establish remote Powershell session
-    GetRemoteExchangeSession -Credential $Credential -CommandsToLoad "Set-MapiVirtualDirectory" -VerbosePreference $VerbosePreference
+    GetRemoteExchangeSession -Credential $Credential -CommandsToLoad "Set-MapiVirtualDirectory" -Verbose:$VerbosePreference
 
     RemoveParameters -PSBoundParametersIn $PSBoundParameters -ParamsToRemove "Credential","AllowServiceRestart"
 
@@ -113,7 +114,6 @@ function Set-TargetResource
     }
 }
 
-
 function Test-TargetResource
 {
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSDSCUseVerboseMessageInDSCResource", "")]
@@ -121,65 +121,70 @@ function Test-TargetResource
     [OutputType([System.Boolean])]
     param
     (
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.String]
         $Identity,
 
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.Management.Automation.PSCredential]
         [System.Management.Automation.Credential()]
         $Credential,
 
+        [Parameter()]
         [System.Boolean]
         $AllowServiceRestart = $false,
 
+        [Parameter()]
         [System.String]
         $DomainController,
 
+        [Parameter()]
         [System.String]
         $ExternalUrl,
 
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.String[]]
         $IISAuthenticationMethods,
 
+        [Parameter()]
         [System.String]
         $InternalUrl
     )
 
-    #Load helper module
-    Import-Module "$((Get-Item -LiteralPath "$($PSScriptRoot)").Parent.Parent.FullName)\Misc\xExchangeCommon.psm1" -Verbose:0
-
-    LogFunctionEntry -Parameters @{"Identity" = $Identity} -VerbosePreference $VerbosePreference
+    LogFunctionEntry -Parameters @{"Identity" = $Identity} -Verbose:$VerbosePreference
 
     #Establish remote Powershell session
-    GetRemoteExchangeSession -Credential $Credential -CommandsToLoad "Get-MapiVirtualDirectory" -VerbosePreference $VerbosePreference
+    GetRemoteExchangeSession -Credential $Credential -CommandsToLoad "Get-MapiVirtualDirectory" -Verbose:$VerbosePreference
 
     $vdir = GetMapiVirtualDirectory @PSBoundParameters
 
+    $testResults = $true
+
     if ($null -eq $vdir)
     {
-        return $false
+        Write-Error -Message 'Unable to retrieve MAPI Virtual Directory for server'
+
+        $testResults = $false
     }
     else
     {
-        if (!(VerifySetting -Name "IISAuthenticationMethods" -Type "Array" -ExpectedValue $IISAuthenticationMethods -ActualValue $vdir.IISAuthenticationMethods -PSBoundParametersIn $PSBoundParameters -VerbosePreference $VerbosePreference))
+        if (!(VerifySetting -Name "IISAuthenticationMethods" -Type "Array" -ExpectedValue $IISAuthenticationMethods -ActualValue $vdir.IISAuthenticationMethods -PSBoundParametersIn $PSBoundParameters -Verbose:$VerbosePreference))
         {
-            return $false
+            $testResults = $false
         }
 
-        if (!(VerifySetting -Name "ExternalUrl" -Type "String" -ExpectedValue $ExternalUrl -ActualValue $vdir.ExternalUrl.AbsoluteUri -PSBoundParametersIn $PSBoundParameters -VerbosePreference $VerbosePreference))
+        if (!(VerifySetting -Name "ExternalUrl" -Type "String" -ExpectedValue $ExternalUrl -ActualValue $vdir.ExternalUrl.AbsoluteUri -PSBoundParametersIn $PSBoundParameters -Verbose:$VerbosePreference))
         {
-            return $false
+            $testResults = $false
         }
 
-        if (!(VerifySetting -Name "InternalUrl" -Type "String" -ExpectedValue $InternalUrl -ActualValue $vdir.InternalUrl.AbsoluteUri -PSBoundParametersIn $PSBoundParameters -VerbosePreference $VerbosePreference))
+        if (!(VerifySetting -Name "InternalUrl" -Type "String" -ExpectedValue $InternalUrl -ActualValue $vdir.InternalUrl.AbsoluteUri -PSBoundParametersIn $PSBoundParameters -Verbose:$VerbosePreference))
         {
-            return $false
-        }    
+            $testResults = $false
+        }
     }
-    
-    return $true
+
+    return $testResults
 }
 
 function GetMapiVirtualDirectory
@@ -188,28 +193,32 @@ function GetMapiVirtualDirectory
     [OutputType([System.Boolean])]
     param
     (
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.String]
         $Identity,
 
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.Management.Automation.PSCredential]
         [System.Management.Automation.Credential()]
         $Credential,
 
+        [Parameter()]
         [System.Boolean]
         $AllowServiceRestart = $false,
 
+        [Parameter()]
         [System.String]
         $DomainController,
 
+        [Parameter()]
         [System.String]
         $ExternalUrl,
 
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.String[]]
         $IISAuthenticationMethods,
 
+        [Parameter()]
         [System.String]
         $InternalUrl
     )
@@ -219,8 +228,4 @@ function GetMapiVirtualDirectory
     return (Get-MapiVirtualDirectory @PSBoundParameters)
 }
 
-
 Export-ModuleMember -Function *-TargetResource
-
-
-

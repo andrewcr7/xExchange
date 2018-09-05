@@ -5,43 +5,48 @@ function Get-TargetResource
     [OutputType([System.Collections.Hashtable])]
     param
     (
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.String]
         $Identity,
 
+        [Parameter()]
         [System.Management.Automation.PSCredential]
+        [System.Management.Automation.Credential()]
         $Credential,
 
+        [Parameter()]
         [System.Int32]
         $SchemaVersion,
 
+        [Parameter()]
         [System.Int32]
         $OrganizationVersion,
 
+        [Parameter()]
         [System.Int32]
         $DomainVersion,
 
+        [Parameter()]
         [System.String[]]
         $ExchangeDomains,
 
+        [Parameter()]
         [System.UInt32]
         $RetryIntervalSec = 60,
 
+        [Parameter()]
         [System.UInt32]
         $RetryCount = 30
     )
 
-    #Load helper module
-    Import-Module "$((Get-Item -LiteralPath "$($PSScriptRoot)").Parent.Parent.FullName)\Misc\xExchangeCommon.psm1" -Verbose:0
-
-    LogFunctionEntry -VerbosePreference $VerbosePreference
+    LogFunctionEntry -Verbose:$VerbosePreference
 
     $dse = GetADRootDSE -Credential $Credential
 
-    if ($PSBoundParameters.ContainsKey("SchemaVersion"))
+    if ($PSBoundParameters.ContainsKey('SchemaVersion'))
     {
         #Check for existence of schema object
-        $schemaObj = GetADObject -Credential $credential -DistinguishedName "CN=ms-Exch-Schema-Version-Pt,$($dse.schemaNamingContext)" -Properties "rangeUpper"
+        $schemaObj = GetADObject -Credential $credential -DistinguishedName "CN=ms-Exch-Schema-Version-Pt,$($dse.schemaNamingContext)" -Properties 'rangeUpper'
 
         if ($null -ne $schemaObj)
         {
@@ -53,13 +58,13 @@ function Get-TargetResource
         }
     }
 
-    if ($PSBoundParameters.ContainsKey("OrganizationVersion"))
+    if ($PSBoundParameters.ContainsKey('OrganizationVersion'))
     {
-        $exchangeContainer = GetADObject -Credential $credential -DistinguishedName "CN=Microsoft Exchange,CN=Services,$($dse.configurationNamingContext)" -Properties "rangeUpper"
+        $exchangeContainer = GetADObject -Credential $credential -DistinguishedName "CN=Microsoft Exchange,CN=Services,$($dse.configurationNamingContext)" -Properties 'rangeUpper'
 
         if ($null -ne $exchangeContainer)
         {
-            $orgContainer = GetADObject -Credential $Credential -Searching $true -DistinguishedName "CN=Microsoft Exchange,CN=Services,$($dse.configurationNamingContext)" -Properties "objectVersion" -Filter "objectClass -like 'msExchOrganizationContainer'" -SearchScope "OneLevel"
+            $orgContainer = GetADObject -Credential $Credential -Searching $true -DistinguishedName "CN=Microsoft Exchange,CN=Services,$($dse.configurationNamingContext)" -Properties 'objectVersion' -Filter "objectClass -like 'msExchOrganizationContainer'" -SearchScope 'OneLevel'
 
             if ($null -ne $orgContainer)
             {
@@ -73,16 +78,16 @@ function Get-TargetResource
         else
         {
             Write-Warning "Unable to find Exchange Configuration Container at 'CN=Microsoft Exchange,CN=Services,$($dse.configurationNamingContext)'. This is either because Exchange /PrepareAD has not been run, or because the configured account does not have permissions to access this object."
-        }  
+        }
     }
 
-    if ($PSBoundParameters.ContainsKey("DomainVersion"))
+    if ($PSBoundParameters.ContainsKey('DomainVersion'))
     {
         #Get this server's domain
-        [string]$machineDomain = (Get-WmiObject -Class Win32_ComputerSystem).Domain.ToLower()
+        [System.String]$machineDomain = (Get-CimInstance -ClassName Win32_ComputerSystem).Domain.ToLower()
 
         #Figure out all domains we need to inspect
-        [string[]]$targetDomains = @()
+        [System.String[]]$targetDomains = @()
         $targetDomains += $machineDomain
 
         if ($null -ne $ExchangeDomains)
@@ -105,7 +110,7 @@ function Get-TargetResource
         {
             $domainDn = DomainDNFromFQDN -Fqdn $domain
 
-            $mesoContainer = GetADObject -Credential $Credential -DistinguishedName "CN=Microsoft Exchange System Objects,$($domainDn)" -Properties "objectVersion"
+            $mesoContainer = GetADObject -Credential $Credential -DistinguishedName "CN=Microsoft Exchange System Objects,$($domainDn)" -Properties 'objectVersion'
 
             $mesoVersion = $null
 
@@ -130,50 +135,54 @@ function Get-TargetResource
     }
 
     $returnValue = @{
-        SchemaVersion = $currentSchemaVersion
-        OrganizationVersion = $currentOrganizationVersion
-        DomainVersion = $currentDomainVersions
-    }    
+        SchemaVersion       = [System.String] $currentSchemaVersion
+        OrganizationVersion = [System.String] $currentOrganizationVersion
+        DomainVersion       = [System.String] $currentDomainVersions
+    }
 
     $returnValue
 }
-
 
 function Set-TargetResource
 {
     [CmdletBinding()]
     param
     (
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.String]
         $Identity,
 
+        [Parameter()]
         [System.Management.Automation.PSCredential]
+        [System.Management.Automation.Credential()]
         $Credential,
 
+        [Parameter()]
         [System.Int32]
         $SchemaVersion,
 
+        [Parameter()]
         [System.Int32]
         $OrganizationVersion,
 
+        [Parameter()]
         [System.Int32]
         $DomainVersion,
 
+        [Parameter()]
         [System.String[]]
         $ExchangeDomains,
 
+        [Parameter()]
         [System.UInt32]
         $RetryIntervalSec = 60,
 
+        [Parameter()]
         [System.UInt32]
         $RetryCount = 30
     )
 
-    #Load helper module
-    Import-Module "$((Get-Item -LiteralPath "$($PSScriptRoot)").Parent.Parent.FullName)\Misc\xExchangeCommon.psm1" -Verbose:0
-
-    LogFunctionEntry -VerbosePreference $VerbosePreference
+    LogFunctionEntry -Verbose:$VerbosePreference
 
     $testResults = Test-TargetResource @PSBoundParameters
 
@@ -191,13 +200,12 @@ function Set-TargetResource
             break
         }
     }
-    
+
     if ($testResults -eq $false)
     {
-        throw "AD has still not been prepped after the maximum amount of retries."
+        throw 'AD has still not been prepped after the maximum amount of retries.'
     }
 }
-
 
 function Test-TargetResource
 {
@@ -206,64 +214,69 @@ function Test-TargetResource
     [OutputType([System.Boolean])]
     param
     (
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.String]
         $Identity,
 
+        [Parameter()]
         [System.Management.Automation.PSCredential]
+        [System.Management.Automation.Credential()]
         $Credential,
 
+        [Parameter()]
         [System.Int32]
         $SchemaVersion,
 
+        [Parameter()]
         [System.Int32]
         $OrganizationVersion,
 
+        [Parameter()]
         [System.Int32]
         $DomainVersion,
 
+        [Parameter()]
         [System.String[]]
         $ExchangeDomains,
 
+        [Parameter()]
         [System.UInt32]
         $RetryIntervalSec = 60,
 
+        [Parameter()]
         [System.UInt32]
         $RetryCount = 30
     )
 
-    #Load helper module
-    Import-Module "$((Get-Item -LiteralPath "$($PSScriptRoot)").Parent.Parent.FullName)\Misc\xExchangeCommon.psm1" -Verbose:0
-
-    LogFunctionEntry -VerbosePreference $VerbosePreference
+    LogFunctionEntry -Verbose:$VerbosePreference
 
     $adStatus = Get-TargetResource @PSBoundParameters
 
-    $returnValue = $true
+    $testResults = $true
 
     if ($null -eq $adStatus)
     {
-        $returnValue = $false
+        $testResults = $false
     }
     else
     {
-        if (!(VerifySetting -Name "SchemaVersion" -Type "Int" -ExpectedValue $SchemaVersion -ActualValue $adStatus.SchemaVersion -PSBoundParametersIn $PSBoundParameters -VerbosePreference $VerbosePreference))
+        if (!(VerifySetting -Name 'SchemaVersion' -Type 'Int' -ExpectedValue $SchemaVersion -ActualValue $adStatus.SchemaVersion -PSBoundParametersIn $PSBoundParameters -Verbose:$VerbosePreference))
         {
-            $returnValue = $false
+            $testResults = $false
         }
 
-        if (!(VerifySetting -Name "OrganizationVersion" -Type "Int" -ExpectedValue $OrganizationVersion -ActualValue $adStatus.OrganizationVersion -PSBoundParametersIn $PSBoundParameters -VerbosePreference $VerbosePreference))
+        if (!(VerifySetting -Name 'OrganizationVersion' -Type 'Int' -ExpectedValue $OrganizationVersion -ActualValue $adStatus.OrganizationVersion -PSBoundParametersIn $PSBoundParameters -Verbose:$VerbosePreference))
         {
-            $returnValue = $false
+            $testResults = $false
         }
 
-        if ($PSBoundParameters.ContainsKey("DomainVersion"))
+        if ($PSBoundParameters.ContainsKey('DomainVersion'))
         {
             #Get this server's domain
-            [string]$machineDomain = (Get-WmiObject -Class Win32_ComputerSystem).Domain.ToLower()
+            [System.String]$machineDomain = (Get-CimInstance -ClassName Win32_ComputerSystem).Domain.ToLower()
 
             #Figure out all domains we need to inspect
-            [string[]]$targetDomains = @()
+            [System.String[]]$targetDomains = @()
             $targetDomains += $machineDomain
 
             if ($null -ne $ExchangeDomains)
@@ -278,24 +291,30 @@ function Test-TargetResource
                     }
                 }
             }
-            
+
             #Compare the desired DomainVersion with the actual version of each domain
             foreach ($domain in $targetDomains)
             {
-                if (!(VerifySetting -Name "DomainVersion" -Type "Int" -ExpectedValue $DomainVersion -ActualValue $adStatus.DomainVersion[$domain] -PSBoundParametersIn $PSBoundParameters -VerbosePreference $VerbosePreference))
+                if (!(VerifySetting -Name 'DomainVersion' -Type 'Int' -ExpectedValue $DomainVersion -ActualValue $adStatus.DomainVersion[$domain] -PSBoundParametersIn $PSBoundParameters -Verbose:$VerbosePreference))
                 {
-                    $returnValue = $false
+                    $testResults = $false
                 }
-            }       
+            }
         }
     }
 
-    return $returnValue
+    return $testResults
 }
 
 function GetADRootDSE
 {
-    param ([PSCredential]$Credential)
+    param
+    (
+        [Parameter()]
+        [System.Management.Automation.PSCredential]
+        [System.Management.Automation.Credential()]
+        $Credential
+    )
 
     if ($null -eq $Credential)
     {
@@ -311,35 +330,61 @@ function GetADRootDSE
 
 function GetADObject
 {
-    param([PSCredential]$Credential, [boolean]$Searching = $false, [string]$DistinguishedName, [string[]]$Properties, [string]$Filter, [string]$SearchScope)
+    param
+    (
+        [Parameter()]
+        [System.Management.Automation.PSCredential]
+        [System.Management.Automation.Credential()]
+        $Credential,
+
+        [Parameter()]
+        [System.Boolean]
+        $Searching = $false,
+
+        [Parameter()]
+        [System.String]
+        $DistinguishedName,
+
+        [Parameter()]
+        [System.String[]]
+        $Properties,
+
+        [Parameter()]
+        [System.String]
+        $Filter,
+
+        [Parameter()]
+        [System.String]
+        $SearchScope
+    )
 
     if ($Searching -eq $false)
     {
-        $getAdObjParams = @{"Identity" = $DistinguishedName}
+        $getAdObjParams = @{'Identity' = $DistinguishedName}
     }
     else
     {
-        $getAdObjParams = @{"SearchBase" = $DistinguishedName}
+        $getAdObjParams = @{'SearchBase' = $DistinguishedName}
 
-        if ([string]::IsNullOrEmpty($Filter) -eq $false)
+        if ([System.String]::IsNullOrEmpty($Filter) -eq $false)
         {
-            $getAdObjParams.Add("Filter", $Filter)
+            $getAdObjParams.Add('Filter', $Filter)
         }
 
-        if ([string]::IsNullOrEmpty($SearchScope) -eq $false)
+        if ([System.String]::IsNullOrEmpty($SearchScope) -eq $false)
         {
-            $getAdObjParams.Add("SearchScope", $SearchScope)
+            $getAdObjParams.Add('SearchScope', $SearchScope)
         }
     }
 
     if ($null -ne $Credential)
     {
-        $getAdObjParams.Add("Credential", $Credential)
+        $getAdObjParams.Add('Credential', $Credential)
     }
 
-    if ([string]::IsNullOrEmpty($Properties) -eq $false)
+    if ([System.String]::IsNullOrEmpty($Properties) -eq $false)
     {
-        $getAdObjParams.Add("Properties", $Properties)
+        $getAdObjParams.Add('Properties', $Properties)
     }
 
     #ErrorAction SilentlyContinue doesn't seem to work with Get-ADObject. Doing in Try/Catch instead
@@ -347,14 +392,22 @@ function GetADObject
     {
         $object = Get-ADObject @getAdObjParams
     }
-    catch{} #Don't do anything here. The caller can decide how to handle this
+    catch
+    {
+        Write-Warning "Failed to find object at '$DistinguishedName' using Get-ADObject."
+    }
 
     return $object
 }
 
 function DomainDNFromFQDN
 {
-    param([string]$Fqdn)
+    param
+    (
+        [Parameter()]
+        [System.String]
+        $Fqdn
+    )
 
     if ($Fqdn.Contains('.'))
     {
@@ -373,13 +426,10 @@ function DomainDNFromFQDN
     }
     else
     {
-        throw "Empty value specified for domain name"
+        throw 'Empty value specified for domain name'
     }
 
     return $domainDn
 }
 
 Export-ModuleMember -Function *-TargetResource
-
-
-

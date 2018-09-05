@@ -5,36 +5,35 @@ function Get-TargetResource
     [OutputType([System.Collections.Hashtable])]
     param
     (
-        [parameter(Mandatory = $true)]
-        [ValidateSet("Performance","Stress","DatabaseBackup","SoftRecovery")]
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('Performance','Stress','DatabaseBackup','SoftRecovery')]
         [System.String]
         $Type,
 
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.String]
         $JetstressPath,
 
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.String]
         $JetstressParams,
 
+        [Parameter()]
         [System.UInt32]
         $MaxWaitMinutes = 0,
 
+        [Parameter()]
         [System.UInt32]
         $MinAchievedIOPS = 0
     )
 
-    #Load helper module
-    Import-Module "$((Get-Item -LiteralPath "$($PSScriptRoot)").Parent.Parent.FullName)\Misc\xExchangeCommon.psm1" -Verbose:0
-
-    LogFunctionEntry -Parameters @{"JetstressPath" = $JetstressPath; "JetstressParams" = $JetstressParams} -VerbosePreference $VerbosePreference
+    LogFunctionEntry -Parameters @{"JetstressPath" = $JetstressPath; "JetstressParams" = $JetstressParams} -Verbose:$VerbosePreference
 
     $returnValue = @{
-        Type = $Type
-        JetstressPath = $JetstressPath
-        JetstressParams = $JetstressParams
-        MaxWaitMinutes = $MaxWaitMinutes        
+        Type            = [System.String] $Type
+        JetstressPath   = [System.String] $JetstressPath
+        JetstressParams = [System.String] $JetstressParams
+        MaxWaitMinutes  = [System.UInt32] $MaxWaitMinutes
     }
 
     $returnValue
@@ -42,38 +41,44 @@ function Get-TargetResource
 
 function Set-TargetResource
 {
+    # Suppressing this rule because $global:DSCMachineStatus is used to trigger a reboot.
+    [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidGlobalVars', '')]
+    <#
+        Suppressing this rule because $global:DSCMachineStatus is only set,
+        never used (by design of Desired State Configuration).
+    #>
+    [System.Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseDeclaredVarsMoreThanAssignments', '', Scope='Function', Target='DSCMachineStatus')]
     [CmdletBinding()]
     param
     (
-        [parameter(Mandatory = $true)]
-        [ValidateSet("Performance","Stress","DatabaseBackup","SoftRecovery")]
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('Performance','Stress','DatabaseBackup','SoftRecovery')]
         [System.String]
         $Type,
 
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.String]
         $JetstressPath,
 
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.String]
         $JetstressParams,
 
+        [Parameter()]
         [System.UInt32]
         $MaxWaitMinutes = 0,
 
+        [Parameter()]
         [System.UInt32]
         $MinAchievedIOPS = 0
     )
 
-    #Load helper module
-    Import-Module "$((Get-Item -LiteralPath "$($PSScriptRoot)").Parent.Parent.FullName)\Misc\xExchangeCommon.psm1" -Verbose:0
-
-    LogFunctionEntry -Parameters @{"JetstressPath" = $JetstressPath; "JetstressParams" = $JetstressParams} -VerbosePreference $VerbosePreference
+    LogFunctionEntry -Parameters @{"JetstressPath" = $JetstressPath; "JetstressParams" = $JetstressParams} -Verbose:$VerbosePreference
 
     $jetstressRunning = IsJetstressRunning
     $jetstressSuccessful = JetstressTestSuccessful @PSBoundParameters
 
-    if ($jetstressSuccessful -eq $false -and (Get-ChildItem -LiteralPath "$($JetstressPath)" | where {$null -ne $_.Name -like "$($Type)*.html"}))
+    if ($jetstressSuccessful -eq $false -and (Get-ChildItem -LiteralPath "$($JetstressPath)" | Where-Object {$null -ne $_.Name -like "$($Type)*.html"}))
     {
         throw "Jetstress was previously executed and resulted in a failed run. Clean up any $($Type)*.html files in the Jetstress install directory before trying to run this resource again."
     }
@@ -94,8 +99,8 @@ function Set-TargetResource
         #Give an additional 60 seconds if ESE counters were just initialized.
         if ($initializingESE -eq $true)
         {
-            Write-Verbose "Jetstress has never initialized performance counters for ESE. Waiting a full 60 seconds for this to occurr"
-            
+            Write-Verbose -Message 'Jetstress has never initialized performance counters for ESE. Waiting a full 60 seconds for this to occurr'
+
             Start-Sleep -Seconds 5
 
             for ($i = 55; $i -gt 0; $i--)
@@ -112,21 +117,23 @@ function Set-TargetResource
                 }
             }
 
-            #I've found that Jetstress doesn't always restart after loading ESE when running as local system in a scheduled task in the background
-            #If Jetstress isn't running at this point, but the perf counters were registered, we probably need to reboot the server
-            #If Jetstress isn't running and ESE is not registered, something failed.
+            <#
+                I've found that Jetstress doesn't always restart after loading ESE when running as local system in a scheduled task in the background
+                If Jetstress isn't running at this point, but the perf counters were registered, we probably need to reboot the server
+                If Jetstress isn't running and ESE is not registered, something failed.
+            #>
             if ($jetstressRunning -eq $false)
             {
                 if ((Test-Path -LiteralPath "$($env:SystemRoot)\Inf\ESE\eseperf.ini") -eq $true)
                 {
-                    Write-Verbose "ESE performance counters were registered. Need to reboot server."
+                    Write-Verbose -Message 'ESE performance counters were registered. Need to reboot server.'
 
                     $global:DSCMachineStatus = 1
                     return
                 }
                 else
                 {
-                    throw "Jetstress failed to register MSExchange Database performance counters"
+                    throw 'Jetstress failed to register MSExchange Database performance counters'
                 }
             }
             else
@@ -154,7 +161,7 @@ function Set-TargetResource
 
         if ($jetstressRunning -eq $false)
         {
-            throw "Waited 60 seconds after launching the Jetstress scheduled task, but failed to detect that JetstressCmd.exe is running"
+            throw 'Waited 60 seconds after launching the Jetstress scheduled task, but failed to detect that JetstressCmd.exe is running'
         }
     }
 
@@ -183,11 +190,11 @@ function Set-TargetResource
 
         if ($overallTestSuccessful -eq $false)
         {
-            throw "Jetstress finished running, but the test did not complete successfully"
+            throw 'Jetstress finished running, but the test did not complete successfully'
         }
         else
         {
-            Write-Verbose "Jetstress finished, and the configured test passed"
+            Write-Verbose -Message 'Jetstress finished, and the configured test passed'
         }
     }
     else
@@ -196,7 +203,6 @@ function Set-TargetResource
     }
 }
 
-
 function Test-TargetResource
 {
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSDSCUseVerboseMessageInDSCResource", "")]
@@ -204,30 +210,29 @@ function Test-TargetResource
     [OutputType([System.Boolean])]
     param
     (
-        [parameter(Mandatory = $true)]
-        [ValidateSet("Performance","Stress","DatabaseBackup","SoftRecovery")]
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('Performance','Stress','DatabaseBackup','SoftRecovery')]
         [System.String]
         $Type,
 
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.String]
         $JetstressPath,
 
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.String]
         $JetstressParams,
 
+        [Parameter()]
         [System.UInt32]
         $MaxWaitMinutes = 0,
 
+        [Parameter()]
         [System.UInt32]
         $MinAchievedIOPS = 0
     )
 
-    #Load helper module
-    Import-Module "$((Get-Item -LiteralPath "$($PSScriptRoot)").Parent.Parent.FullName)\Misc\xExchangeCommon.psm1" -Verbose:0
-
-    LogFunctionEntry -Parameters @{"JetstressPath" = $JetstressPath; "JetstressParams" = $JetstressParams} -VerbosePreference $VerbosePreference
+    LogFunctionEntry -Parameters @{"JetstressPath" = $JetstressPath; "JetstressParams" = $JetstressParams} -Verbose:$VerbosePreference
 
     $jetstressRunning = IsJetstressRunning -MaximumWaitSeconds 1
 
@@ -257,31 +262,31 @@ function StartJetstress
     [CmdletBinding()]
     param
     (
-        [parameter(Mandatory = $true)]
-        [ValidateSet("Performance","Stress","DatabaseBackup","SoftRecovery")]
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('Performance','Stress','DatabaseBackup','SoftRecovery')]
         [System.String]
         $Type,
 
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.String]
         $JetstressPath,
 
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.String]
         $JetstressParams,
 
+        [Parameter()]
         [System.UInt32]
         $MaxWaitMinutes = 0,
 
+        [Parameter()]
         [System.UInt32]
         $MinAchievedIOPS = 0
     )
 
-    Import-Module "$((Get-Item -LiteralPath "$($PSScriptRoot)").Parent.Parent.FullName)\Misc\xExchangeCommon.psm1" -Verbose:0
-
     $fullPath = Join-Path -Path "$($JetstressPath)" -ChildPath "JetstressCmd.exe"
 
-    StartScheduledTask -Path "$($fullPath)" -Arguments "$($JetstressParams)" -WorkingDirectory "$($JetstressPath)" -TaskName "Jetstress" -MaxWaitMinutes $MaxWaitMinutes -VerbosePreference $VerbosePreference -TaskPriority 1
+    StartScheduledTask -Path "$($fullPath)" -Arguments "$($JetstressParams)" -WorkingDirectory "$($JetstressPath)" -TaskName 'Jetstress' -MaxWaitMinutes $MaxWaitMinutes -Verbose:$VerbosePreference -TaskPriority 1
 }
 
 #Looks in the latest Type*.html file to determine whether the last Jetstress run passed
@@ -291,22 +296,24 @@ function JetstressTestSuccessful
     [OutputType([System.Boolean])]
     param
     (
-        [parameter(Mandatory = $true)]
-        [ValidateSet("Performance","Stress","DatabaseBackup","SoftRecovery")]
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('Performance','Stress','DatabaseBackup','SoftRecovery')]
         [System.String]
         $Type,
 
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.String]
         $JetstressPath,
 
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.String]
         $JetstressParams,
 
+        [Parameter()]
         [System.UInt32]
         $MaxWaitMinutes = 0,
 
+        [Parameter()]
         [System.UInt32]
         $MinAchievedIOPS = 0
     )
@@ -314,7 +321,7 @@ function JetstressTestSuccessful
     $overallTestSuccessful = $false
     $achievedIOPSTarget = $false
 
-    $outputFiles = Get-ChildItem -LiteralPath "$($JetstressPath)" | where {$_.Name -like "$($Type)*.html"}
+    $outputFiles = Get-ChildItem -LiteralPath "$($JetstressPath)" | Where-Object {$_.Name -like "$($Type)*.html"}
 
     if ($null -ne $outputFiles -and $outputFiles.Count -ge 1)
     {
@@ -342,7 +349,7 @@ function JetstressTestSuccessful
 
                     Write-Verbose "File $($latest.FullName)'' has an 'Overall Test Result' of '$($result)'"
 
-                    if ($result -like "Pass")
+                    if ($result -like 'Pass')
                     {
                         $overallTestSuccessful = $true
                     }
@@ -351,7 +358,7 @@ function JetstressTestSuccessful
                 {
                     $foundAchievedIOPS = $true
 
-                    if ([string]::IsNullOrEmpty($result) -eq $false)
+                    if ([System.String]::IsNullOrEmpty($result) -eq $false)
                     {
                         Write-Verbose "File $($latest.FullName)'' has an 'Achieved Transactional I/O per Second' value of '$($result)'"
 
@@ -364,7 +371,7 @@ function JetstressTestSuccessful
                     }
                     else
                     {
-                        Write-Verbose "Value for 'Achieved Transactional I/O per Second' is empty"
+                        Write-Verbose -Message "Value for 'Achieved Transactional I/O per Second' is empty"
                     }
                 }
             }
@@ -372,23 +379,20 @@ function JetstressTestSuccessful
 
         if ($foundOverallResults -eq $false)
         {
-            Write-Verbose "Unable to find 'Overall Test Result' in file '$($latest.FullName)'"
+            Write-Verbose -Message "Unable to find 'Overall Test Result' in file '$($latest.FullName)'"
         }
 
         if ($foundAchievedIOPS -eq $false)
         {
-            Write-Verbose "Unable to find 'Achieved Transactional I/O per Second' in file '$($latest.FullName)'"
+            Write-Verbose -Message "Unable to find 'Achieved Transactional I/O per Second' in file '$($latest.FullName)'"
         }
     }
     else
     {
-        Write-Verbose "Unable to find any files matching '$($Type)*.html' in folder '$($JetstressPath)'"
+        Write-Verbose -Message "Unable to find any files matching '$($Type)*.html' in folder '$($JetstressPath)'"
     }
 
     return ($overallTestSuccessful -eq $true -and $achievedIOPSTarget -eq $true)
 }
 
 Export-ModuleMember -Function *-TargetResource
-
-
-

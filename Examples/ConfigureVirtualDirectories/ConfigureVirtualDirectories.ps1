@@ -1,8 +1,74 @@
-Configuration ConfigureVirtualDirectories
+<#
+.EXAMPLE
+    This example shows how to configure virtual directories.
+#>
+
+$ConfigurationData = @{
+    AllNodes = @(
+        @{
+            NodeName                    = '*'
+
+            <#
+                NOTE! THIS IS NOT RECOMMENDED IN PRODUCTION.
+                This is added so that AppVeyor automatic tests can pass, otherwise
+                the tests will fail on passwords being in plain text and not being
+                encrypted. Because it is not possible to have a certificate in
+                AppVeyor to encrypt the passwords we need to add the parameter
+                'PSDscAllowPlainTextPassword'.
+                NOTE! THIS IS NOT RECOMMENDED IN PRODUCTION.
+                See:
+                http://blogs.msdn.com/b/powershell/archive/2014/01/31/want-to-secure-credentials-in-windows-powershell-desired-state-configuration.aspx
+            #>
+            PSDscAllowPlainTextPassword = $true
+        },
+
+        #Individual target nodes are defined next
+        @{
+            NodeName = 'e15-1'
+            CASID    = 'Site1CAS'
+        }
+
+        @{
+            NodeName = 'e15-2'
+            CASID    = 'Site2CAS'
+        }
+    );
+
+    #CAS settings that are unique per site will go in separate hash table entries.
+    Site1CAS = @(
+        @{
+            InternalNLBFqdn            = 'mail-site1.contoso.local'
+            ExternalNLBFqdn            = 'mail.contoso.local'
+
+            #ClientAccessServer Settings
+            AutoDiscoverSiteScope      = 'Site1','Site3','Site5'
+
+            #OAB Settings
+            OABsToDistribute           = 'Default Offline Address Book - Site1'
+        }
+    );
+
+    Site2CAS = @(
+        @{
+            InternalNLBFqdn            = 'mail-site2.contoso.local'
+            ExternalNLBFqdn            = 'mail.contoso.local'
+
+            #ClientAccessServer Settings
+            AutoDiscoverSiteScope      = 'Site2','Site4','Site6'
+
+            #OAB Settings
+            OABsToDistribute           = 'Default Offline Address Book - Site2'
+        }
+    );
+}
+
+Configuration Example
 {
     param
     (
-        [PSCredential]$ShellCreds
+        [Parameter(Mandatory = $true)]
+        [System.Management.Automation.PSCredential]
+        $ExchangeAdminCredential
     )
 
     Import-DscResource -Module xExchange
@@ -11,17 +77,11 @@ Configuration ConfigureVirtualDirectories
     {
         $casSettings = $ConfigurationData[$Node.CASId] #Look up and retrieve the CAS settings for this node
 
-        #Thumbprint of the certificate used to decrypt credentials on the target node
-        LocalConfigurationManager
-        {
-            CertificateId = $Node.Thumbprint
-        }
-        
         ###CAS specific settings###
         xExchClientAccessServer CAS
         {
             Identity                       = $Node.NodeName
-            Credential                     = $ShellCreds
+            Credential                     = $ExchangeAdminCredential
             AutoDiscoverServiceInternalUri = "https://$($casSettings.InternalNLBFqdn)/autodiscover/autodiscover.xml"
             AutoDiscoverSiteScope          = $casSettings.AutoDiscoverSiteScope
         }
@@ -43,16 +103,16 @@ Configuration ConfigureVirtualDirectories
         xExchActiveSyncVirtualDirectory ASVdir
         {
             Identity                    = "$($Node.NodeName)\Microsoft-Server-ActiveSync (Default Web Site)"
-            Credential                  = $ShellCreds
+            Credential                  = $ExchangeAdminCredential
             AutoCertBasedAuth           = $true
             AutoCertBasedAuthThumbprint = '49bef4b2e82599233154465323ebf96a12b60673'
             BasicAuthEnabled            = $false
             ClientCertAuth              = 'Required'
-            ExternalUrl                 = "https://$($casSettings.ExternalNLBFqdn)/Microsoft-Server-ActiveSync"  
-            InternalUrl                 = "https://$($casSettings.InternalNLBFqdn)/Microsoft-Server-ActiveSync"  
+            ExternalUrl                 = "https://$($casSettings.ExternalNLBFqdn)/Microsoft-Server-ActiveSync"
+            InternalUrl                 = "https://$($casSettings.InternalNLBFqdn)/Microsoft-Server-ActiveSync"
             WindowsAuthEnabled          = $false
             AllowServiceRestart         = $true
-            
+
             DependsOn                   = '[WindowsFeature]WebClientAuth','[WindowsFeature]WebCertAuth'
             #NOTE: If CBA is being configured, this should also be dependent on the cert whose thumbprint is being used. See EndToEndExample.
         }
@@ -61,12 +121,12 @@ Configuration ConfigureVirtualDirectories
         xExchEcpVirtualDirectory ECPVDir
         {
             Identity                      = "$($Node.NodeName)\ecp (Default Web Site)"
-            Credential                    = $ShellCreds
+            Credential                    = $ExchangeAdminCredential
             BasicAuthentication           = $true
             ExternalAuthenticationMethods = 'Fba'
             ExternalUrl                   = "https://$($casSettings.ExternalNLBFqdn)/ecp"
             FormsAuthentication           = $true
-            InternalUrl                   = "https://$($casSettings.InternalNLBFqdn)/ecp"           
+            InternalUrl                   = "https://$($casSettings.InternalNLBFqdn)/ecp"
             WindowsAuthentication         = $false
             AllowServiceRestart           = $true
         }
@@ -75,10 +135,10 @@ Configuration ConfigureVirtualDirectories
         xExchMapiVirtualDirectory MAPIVdir
         {
             Identity                 = "$($Node.NodeName)\mapi (Default Web Site)"
-            Credential               = $ShellCreds
+            Credential               = $ExchangeAdminCredential
             ExternalUrl              = "https://$($casSettings.ExternalNLBFqdn)/mapi"
             IISAuthenticationMethods = 'NTLM','Negotiate'
-            InternalUrl              = "https://$($casSettings.InternalNLBFqdn)/mapi" 
+            InternalUrl              = "https://$($casSettings.InternalNLBFqdn)/mapi"
             AllowServiceRestart      = $true
         }
 
@@ -86,9 +146,9 @@ Configuration ConfigureVirtualDirectories
         xExchOabVirtualDirectory OABVdir
         {
             Identity            = "$($Node.NodeName)\OAB (Default Web Site)"
-            Credential          = $ShellCreds
+            Credential          = $ExchangeAdminCredential
             ExternalUrl         = "https://$($casSettings.ExternalNLBFqdn)/oab"
-            InternalUrl         = "https://$($casSettings.InternalNLBFqdn)/oab"     
+            InternalUrl         = "https://$($casSettings.InternalNLBFqdn)/oab"
             OABsToDistribute    = $casSettings.OABsToDistribute
             AllowServiceRestart = $true
         }
@@ -97,7 +157,7 @@ Configuration ConfigureVirtualDirectories
         xExchOutlookAnywhere OAVdir
         {
             Identity                           = "$($Node.NodeName)\Rpc (Default Web Site)"
-            Credential                         = $ShellCreds
+            Credential                         = $ExchangeAdminCredential
             ExternalClientAuthenticationMethod = 'Ntlm'
             ExternalClientsRequireSSL          = $true
             ExternalHostName                   = $casSettings.ExternalNLBFqdn
@@ -112,12 +172,12 @@ Configuration ConfigureVirtualDirectories
         xExchOwaVirtualDirectory OWAVdir
         {
             Identity                              = "$($Node.NodeName)\owa (Default Web Site)"
-            Credential                            = $ShellCreds
+            Credential                            = $ExchangeAdminCredential
             BasicAuthentication                   = $true
             ExternalAuthenticationMethods         = 'Fba'
             ExternalUrl                           = "https://$($casSettings.ExternalNLBFqdn)/owa"
             FormsAuthentication                   = $true
-            InternalUrl                           = "https://$($casSettings.InternalNLBFqdn)/owa"    
+            InternalUrl                           = "https://$($casSettings.InternalNLBFqdn)/owa"
             WindowsAuthentication                 = $false
             AllowServiceRestart                   = $true
         }
@@ -126,7 +186,7 @@ Configuration ConfigureVirtualDirectories
         xExchPowerShellVirtualDirectory PSVdir
         {
             Identity              = "$($Node.NodeName)\PowerShell (Default Web Site)"
-            Credential            = $ShellCreds
+            Credential            = $ExchangeAdminCredential
             WindowsAuthentication = $true
             AllowServiceRestart   = $true
         }
@@ -135,24 +195,10 @@ Configuration ConfigureVirtualDirectories
         xExchWebServicesVirtualDirectory EWSVdir
         {
             Identity            = "$($Node.NodeName)\EWS (Default Web Site)"
-            Credential          = $ShellCreds
-            ExternalUrl         = "https://$($casSettings.ExternalNLBFqdn)/ews/exchange.asmx" 
+            Credential          = $ExchangeAdminCredential
+            ExternalUrl         = "https://$($casSettings.ExternalNLBFqdn)/ews/exchange.asmx"
             InternalUrl         = "https://$($casSettings.InternalNLBFqdn)/ews/exchange.asmx"
-            AllowServiceRestart = $true         
+            AllowServiceRestart = $true
         }
     }
 }
-
-if ($null -eq $ShellCreds)
-{
-    $ShellCreds = Get-Credential -Message 'Enter credentials for establishing Remote Powershell sessions to Exchange'
-}
-
-###Compiles the example
-ConfigureVirtualDirectories -ConfigurationData $PSScriptRoot\ConfigureVirtualDirectories-Config.psd1 -ShellCreds $ShellCreds
-
-###Sets up LCM on target computers to decrypt credentials.
-Set-DscLocalConfigurationManager -Path .\ConfigureVirtualDirectories -Verbose
-
-###Pushes configuration and waits for execution
-Start-DscConfiguration -Path .\ConfigureVirtualDirectories -Verbose -Wait 

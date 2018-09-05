@@ -5,146 +5,158 @@ function Get-TargetResource
     [OutputType([System.Collections.Hashtable])]
     param
     (
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.String]
         $Identity,
 
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.Management.Automation.PSCredential]
         [System.Management.Automation.Credential()]
         $Credential,
 
+        [Parameter()]
         [System.Boolean]
         $AllowServiceRestart = $false,
 
+        [Parameter()]
         [System.Boolean]
         $AdfsAuthentication,
 
+        [Parameter()]
         [System.Boolean]
         $BasicAuthentication,
 
+        [Parameter()]
         [System.Boolean]
         $DigestAuthentication,
 
+        [Parameter()]
         [System.String]
         $DomainController,
 
+        [Parameter()]
         [System.String[]]
         $ExternalAuthenticationMethods,
 
+        [Parameter()]
         [System.String]
         $ExternalUrl,
 
+        [Parameter()]
         [System.Boolean]
         $FormsAuthentication,
 
+        [Parameter()]
         [System.String]
         $InternalUrl,
 
+        [Parameter()]
         [System.Boolean]
         $WindowsAuthentication
     )
 
-    #Load helper module
-    Import-Module "$((Get-Item -LiteralPath "$($PSScriptRoot)").Parent.Parent.FullName)\Misc\xExchangeCommon.psm1" -Verbose:0
-
-    LogFunctionEntry -Parameters @{"Identity" = $Identity} -VerbosePreference $VerbosePreference
+    LogFunctionEntry -Parameters @{"Identity" = $Identity} -Verbose:$VerbosePreference
 
     #Establish remote Powershell session
-    GetRemoteExchangeSession -Credential $Credential -CommandsToLoad 'Get-EcpVirtualDirectory' -VerbosePreference $VerbosePreference
+    GetRemoteExchangeSession -Credential $Credential -CommandsToLoad 'Get-EcpVirtualDirectory' -Verbose:$VerbosePreference
 
     $EcpVdir = GetEcpVirtualDirectory @PSBoundParameters
 
     if ($null -ne $EcpVdir)
     {
         $returnValue = @{
-            DigestAuthentication = $EcpVdir.DigestAuthentication
-            AdfsAuthentication = $EcpVdir.AdfsAuthentication
-            ExternalAuthenticationMethods = $EcpVdir.ExternalAuthenticationMethods
-            Identity = $Identity
-            InternalUrl = $EcpVdir.InternalUrl
-            ExternalUrl = $EcpVdir.ExternalUrl
-            FormsAuthentication = $EcpVdir.FormsAuthentication
-            WindowsAuthentication = $EcpVdir.WindowsAuthentication
-            BasicAuthentication = $EcpVdir.BasicAuthentication
-
+            Identity                      = [System.String] $Identity
+            AdfsAuthentication            = [System.Boolean] $EcpVdir.AdfsAuthentication
+            BasicAuthentication           = [System.Boolean] $EcpVdir.BasicAuthentication
+            DigestAuthentication          = [System.Boolean] $EcpVdir.DigestAuthentication
+            ExternalAuthenticationMethods = [System.String[]] $EcpVdir.ExternalAuthenticationMethods
+            ExternalUrl                   = [System.String] $EcpVdir.ExternalUrl
+            FormsAuthentication           = [System.Boolean] $EcpVdir.FormsAuthentication
+            InternalUrl                   = [System.String] $EcpVdir.InternalUrl
+            WindowsAuthentication         = [System.Boolean] $EcpVdir.WindowsAuthentication
         }
     }
 
     $returnValue
 }
 
-
 function Set-TargetResource
 {
     [CmdletBinding()]
     param
     (
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.String]
         $Identity,
 
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.Management.Automation.PSCredential]
         [System.Management.Automation.Credential()]
         $Credential,
 
+        [Parameter()]
         [System.Boolean]
         $AllowServiceRestart = $false,
 
+        [Parameter()]
         [System.Boolean]
         $AdfsAuthentication,
 
+        [Parameter()]
         [System.Boolean]
         $BasicAuthentication,
 
+        [Parameter()]
         [System.Boolean]
         $DigestAuthentication,
 
+        [Parameter()]
         [System.String]
         $DomainController,
 
+        [Parameter()]
         [System.String[]]
         $ExternalAuthenticationMethods,
 
+        [Parameter()]
         [System.String]
         $ExternalUrl,
 
+        [Parameter()]
         [System.Boolean]
         $FormsAuthentication,
 
+        [Parameter()]
         [System.String]
         $InternalUrl,
 
+        [Parameter()]
         [System.Boolean]
         $WindowsAuthentication
     )
 
-    #Load helper module
-    Import-Module "$((Get-Item -LiteralPath "$($PSScriptRoot)").Parent.Parent.FullName)\Misc\xExchangeCommon.psm1" -Verbose:0
-
-    LogFunctionEntry -Parameters @{"Identity" = $Identity} -VerbosePreference $VerbosePreference
+    LogFunctionEntry -Parameters @{"Identity" = $Identity} -Verbose:$VerbosePreference
 
     #Establish remote Powershell session
-    GetRemoteExchangeSession -Credential $Credential -CommandsToLoad 'Set-EcpVirtualDirectory' -VerbosePreference $VerbosePreference
+    GetRemoteExchangeSession -Credential $Credential -CommandsToLoad 'Set-EcpVirtualDirectory' -Verbose:$VerbosePreference
 
     #Ensure an empty string is $null and not a string
-    SetEmptyStringParamsToNull -PSBoundParametersIn $PSBoundParameters  
-  
+    SetEmptyStringParamsToNull -PSBoundParametersIn $PSBoundParameters
+
     #Remove Credential and AllowServiceRestart because those parameters do not exist on Set-OwaVirtualDirectory
     RemoveParameters -PSBoundParametersIn $PSBoundParameters -ParamsToRemove 'Credential','AllowServiceRestart'
 
     Set-EcpVirtualDirectory @PSBoundParameters
-  
+
     If($AllowServiceRestart -eq $true)
     {
-        Write-Verbose "Recycling MSExchangeECPAppPool"
+        Write-Verbose -Message 'Recycling MSExchangeECPAppPool'
 
         RestartAppPoolIfExists -Name MSExchangeECPAppPool
     }
     else
     {
-        Write-Warning "The configuration will not take effect until MSExchangeECPAppPool is manually recycled."
+        Write-Warning -Message 'The configuration will not take effect until MSExchangeECPAppPool is manually recycled.'
     }
 }
 
@@ -155,108 +167,118 @@ function Test-TargetResource
     [OutputType([System.Boolean])]
     param
     (
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.String]
         $Identity,
 
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.Management.Automation.PSCredential]
         [System.Management.Automation.Credential()]
         $Credential,
 
+        [Parameter()]
         [System.Boolean]
         $AllowServiceRestart = $false,
 
+        [Parameter()]
         [System.Boolean]
         $AdfsAuthentication,
 
+        [Parameter()]
         [System.Boolean]
         $BasicAuthentication,
 
+        [Parameter()]
         [System.Boolean]
         $DigestAuthentication,
 
+        [Parameter()]
         [System.String]
         $DomainController,
 
+        [Parameter()]
         [System.String[]]
         $ExternalAuthenticationMethods,
 
+        [Parameter()]
         [System.String]
         $ExternalUrl,
 
+        [Parameter()]
         [System.Boolean]
         $FormsAuthentication,
 
+        [Parameter()]
         [System.String]
         $InternalUrl,
 
+        [Parameter()]
         [System.Boolean]
         $WindowsAuthentication
     )
 
-    #Load helper module
-    Import-Module "$((Get-Item -LiteralPath "$($PSScriptRoot)").Parent.Parent.FullName)\Misc\xExchangeCommon.psm1" -Verbose:0
+    LogFunctionEntry -Parameters @{"Identity" = $Identity} -Verbose:$VerbosePreference
 
-    LogFunctionEntry -Parameters @{"Identity" = $Identity} -VerbosePreference $VerbosePreference
-
-    #Establish remote Powershell session    
-    GetRemoteExchangeSession -Credential $Credential -CommandsToLoad 'Get-EcpVirtualDirectory' -VerbosePreference $VerbosePreference
+    #Establish remote Powershell session
+    GetRemoteExchangeSession -Credential $Credential -CommandsToLoad 'Get-EcpVirtualDirectory' -Verbose:$VerbosePreference
 
     #Ensure an empty string is $null and not a string
     SetEmptyStringParamsToNull -PSBoundParametersIn $PSBoundParameters
-    
+
     $EcpVdir = GetEcpVirtualDirectory @PSBoundParameters
+
+    $testResults = $true
 
     if ($null -eq $EcpVdir)
     {
-        return $false
+        Write-Error -Message 'Unable to retrieve ECP Virtual Directory for server'
+
+        $testResults = $false
     }
     else
     {
-        if (!(VerifySetting -Name "InternalUrl" -Type "String" -ExpectedValue $InternalUrl -ActualValue $EcpVdir.InternalUrl.AbsoluteUri -PSBoundParametersIn $PSBoundParameters -VerbosePreference $VerbosePreference))
+        if (!(VerifySetting -Name 'InternalUrl' -Type 'String' -ExpectedValue $InternalUrl -ActualValue $EcpVdir.InternalUrl.AbsoluteUri -PSBoundParametersIn $PSBoundParameters -Verbose:$VerbosePreference))
         {
-            return $false
+            $testResults = $false
         }
 
-        if (!(VerifySetting -Name "ExternalUrl" -Type "String" -ExpectedValue $ExternalUrl -ActualValue $EcpVdir.ExternalUrl.AbsoluteUri -PSBoundParametersIn $PSBoundParameters -VerbosePreference $VerbosePreference))
+        if (!(VerifySetting -Name 'ExternalUrl' -Type 'String' -ExpectedValue $ExternalUrl -ActualValue $EcpVdir.ExternalUrl.AbsoluteUri -PSBoundParametersIn $PSBoundParameters -Verbose:$VerbosePreference))
         {
-            return $false
+            $testResults = $false
         }
 
-        if (!(VerifySetting -Name "FormsAuthentication" -Type "Boolean" -ExpectedValue $FormsAuthentication -ActualValue $EcpVdir.FormsAuthentication -PSBoundParametersIn $PSBoundParameters -VerbosePreference $VerbosePreference))
+        if (!(VerifySetting -Name 'FormsAuthentication' -Type 'Boolean' -ExpectedValue $FormsAuthentication -ActualValue $EcpVdir.FormsAuthentication -PSBoundParametersIn $PSBoundParameters -Verbose:$VerbosePreference))
         {
-            return $false
+            $testResults = $false
         }
 
-        if (!(VerifySetting -Name "WindowsAuthentication" -Type "Boolean" -ExpectedValue $WindowsAuthentication -ActualValue $EcpVdir.WindowsAuthentication -PSBoundParametersIn $PSBoundParameters -VerbosePreference $VerbosePreference))
+        if (!(VerifySetting -Name 'WindowsAuthentication' -Type 'Boolean' -ExpectedValue $WindowsAuthentication -ActualValue $EcpVdir.WindowsAuthentication -PSBoundParametersIn $PSBoundParameters -Verbose:$VerbosePreference))
         {
-            return $false
+            $testResults = $false
         }
 
-        if (!(VerifySetting -Name "BasicAuthentication" -Type "Boolean" -ExpectedValue $BasicAuthentication -ActualValue $EcpVdir.BasicAuthentication -PSBoundParametersIn $PSBoundParameters -VerbosePreference $VerbosePreference))
+        if (!(VerifySetting -Name 'BasicAuthentication' -Type 'Boolean' -ExpectedValue $BasicAuthentication -ActualValue $EcpVdir.BasicAuthentication -PSBoundParametersIn $PSBoundParameters -Verbose:$VerbosePreference))
         {
-            return $false
+            $testResults = $false
         }
 
-        if (!(VerifySetting -Name "DigestAuthentication" -Type "Boolean" -ExpectedValue $DigestAuthentication -ActualValue $EcpVdir.DigestAuthentication -PSBoundParametersIn $PSBoundParameters -VerbosePreference $VerbosePreference))
+        if (!(VerifySetting -Name 'DigestAuthentication' -Type 'Boolean' -ExpectedValue $DigestAuthentication -ActualValue $EcpVdir.DigestAuthentication -PSBoundParametersIn $PSBoundParameters -Verbose:$VerbosePreference))
         {
-            return $false
+            $testResults = $false
         }
 
-        if (!(VerifySetting -Name "AdfsAuthentication" -Type "Boolean" -ExpectedValue $AdfsAuthentication -ActualValue $EcpVdir.AdfsAuthentication -PSBoundParametersIn $PSBoundParameters -VerbosePreference $VerbosePreference))
+        if (!(VerifySetting -Name 'AdfsAuthentication' -Type 'Boolean' -ExpectedValue $AdfsAuthentication -ActualValue $EcpVdir.AdfsAuthentication -PSBoundParametersIn $PSBoundParameters -Verbose:$VerbosePreference))
         {
-            return $false
+            $testResults = $false
         }
 
-        if (!(VerifySetting -Name "ExternalAuthenticationMethods" -Type "Array" -ExpectedValue $ExternalAuthenticationMethods -ActualValue $EcpVdir.ExternalAuthenticationMethods -PSBoundParametersIn $PSBoundParameters -VerbosePreference $VerbosePreference))
+        if (!(VerifySetting -Name 'ExternalAuthenticationMethods' -Type 'Array' -ExpectedValue $ExternalAuthenticationMethods -ActualValue $EcpVdir.ExternalAuthenticationMethods -PSBoundParametersIn $PSBoundParameters -Verbose:$VerbosePreference))
         {
-            return $false
+            $testResults = $false
         }
     }
 
-    #If the code made it this for all properties are in a desired state    
-    return $true 
+    return $testResults
 }
 
 function GetEcpVirtualDirectory
@@ -264,53 +286,59 @@ function GetEcpVirtualDirectory
     [CmdletBinding()]
     param
     (
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.String]
         $Identity,
 
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.Management.Automation.PSCredential]
         [System.Management.Automation.Credential()]
         $Credential,
 
+        [Parameter()]
         [System.Boolean]
         $AllowServiceRestart = $false,
 
+        [Parameter()]
         [System.Boolean]
         $AdfsAuthentication,
 
+        [Parameter()]
         [System.Boolean]
         $BasicAuthentication,
 
+        [Parameter()]
         [System.Boolean]
         $DigestAuthentication,
 
+        [Parameter()]
         [System.String]
         $DomainController,
 
+        [Parameter()]
         [System.String[]]
         $ExternalAuthenticationMethods,
 
+        [Parameter()]
         [System.String]
         $ExternalUrl,
 
+        [Parameter()]
         [System.Boolean]
         $FormsAuthentication,
 
+        [Parameter()]
         [System.String]
         $InternalUrl,
 
+        [Parameter()]
         [System.Boolean]
         $WindowsAuthentication
     )
 
-    RemoveParameters -PSBoundParametersIn $PSBoundParameters -ParamsToKeep "Identity","DomainController"
+    RemoveParameters -PSBoundParametersIn $PSBoundParameters -ParamsToKeep 'Identity','DomainController'
 
     return (Get-EcpVirtualDirectory @PSBoundParameters)
 }
 
-
 Export-ModuleMember -Function *-TargetResource
-
-
-

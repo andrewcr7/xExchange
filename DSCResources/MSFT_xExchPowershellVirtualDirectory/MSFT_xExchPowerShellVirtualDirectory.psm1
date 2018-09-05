@@ -5,115 +5,124 @@ function Get-TargetResource
     [OutputType([System.Collections.Hashtable])]
     param
     (
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.String]
         $Identity,
 
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.Management.Automation.PSCredential]
         [System.Management.Automation.Credential()]
         $Credential,
 
+        [Parameter()]
         [System.Boolean]
         $AllowServiceRestart = $false,
 
+        [Parameter()]
         [System.Boolean]
         $BasicAuthentication,
 
+        [Parameter()]
         [System.Boolean]
         $CertificateAuthentication,
 
+        [Parameter()]
         [System.String]
         $DomainController,
 
+        [Parameter()]
         [System.String]
         $ExternalUrl,
 
+        [Parameter()]
         [System.String]
         $InternalUrl,
 
+        [Parameter()]
         [System.Boolean]
         $RequireSSL,
 
+        [Parameter()]
         [System.Boolean]
         $WindowsAuthentication
     )
 
-    #Load helper module
-    Import-Module "$((Get-Item -LiteralPath "$($PSScriptRoot)").Parent.Parent.FullName)\Misc\xExchangeCommon.psm1" -Verbose:0
-
-    LogFunctionEntry -Parameters @{"Identity" = $Identity} -VerbosePreference $VerbosePreference
+    LogFunctionEntry -Parameters @{'Identity' = $Identity} -Verbose:$VerbosePreference
 
     #Establish remote Powershell session
-    GetRemoteExchangeSession -Credential $Credential -CommandsToLoad "Get-PowerShellVirtualDirectory" -VerbosePreference $VerbosePreference
+    GetRemoteExchangeSession -Credential $Credential -CommandsToLoad 'Get-PowerShellVirtualDirectory' -Verbose:$VerbosePreference
 
     $vdir = GetPowerShellVirtualDirectory @PSBoundParameters
 
     if ($null -ne $vdir)
     {
         $returnValue = @{
-            Identity = $Identity
-            BasicAuthentication = $vdir.BasicAuthentication
-            CertificateAuthentication = $vdir.CertificateAuthentication
-            ExternalUrl = $vdir.ExternalUrl.AbsoluteUri
-            InternalUrl = $vdir.InternalUrl.AbsoluteUri
-            RequireSSL = $vdir.RequireSSL
-            WindowsAuthentication = $vdir.WindowsAuthentication
+            Identity                  = [System.String] $Identity
+            BasicAuthentication       = [System.Boolean] $vdir.BasicAuthentication
+            CertificateAuthentication = [System.Boolean] $vdir.CertificateAuthentication
+            ExternalUrl               = [System.String] $vdir.ExternalUrl.AbsoluteUri
+            InternalUrl               = [System.String] $vdir.InternalUrl.AbsoluteUri
+            RequireSSL                = [System.Boolean] $vdir.RequireSSL
+            WindowsAuthentication     = [System.Boolean] $vdir.WindowsAuthentication
         }
     }
 
     $returnValue
 }
 
-
 function Set-TargetResource
 {
     [CmdletBinding()]
     param
     (
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.String]
         $Identity,
 
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.Management.Automation.PSCredential]
         [System.Management.Automation.Credential()]
         $Credential,
 
+        [Parameter()]
         [System.Boolean]
         $AllowServiceRestart = $false,
 
+        [Parameter()]
         [System.Boolean]
         $BasicAuthentication,
 
+        [Parameter()]
         [System.Boolean]
         $CertificateAuthentication,
 
+        [Parameter()]
         [System.String]
         $DomainController,
 
+        [Parameter()]
         [System.String]
         $ExternalUrl,
 
+        [Parameter()]
         [System.String]
         $InternalUrl,
 
+        [Parameter()]
         [System.Boolean]
         $RequireSSL,
 
+        [Parameter()]
         [System.Boolean]
         $WindowsAuthentication
     )
 
-    #Load helper module
-    Import-Module "$((Get-Item -LiteralPath "$($PSScriptRoot)").Parent.Parent.FullName)\Misc\xExchangeCommon.psm1" -Verbose:0
-
-    LogFunctionEntry -Parameters @{"Identity" = $Identity} -VerbosePreference $VerbosePreference
+    LogFunctionEntry -Parameters @{'Identity' = $Identity} -Verbose:$VerbosePreference
 
     #Establish remote Powershell session
-    GetRemoteExchangeSession -Credential $Credential -CommandsToLoad "Set-PowerShellVirtualDirectory" -VerbosePreference $VerbosePreference
+    GetRemoteExchangeSession -Credential $Credential -CommandsToLoad 'Set-PowerShellVirtualDirectory' -Verbose:$VerbosePreference
 
-    RemoveParameters -PSBoundParametersIn $PSBoundParameters -ParamsToRemove "Credential","AllowServiceRestart"
+    RemoveParameters -PSBoundParametersIn $PSBoundParameters -ParamsToRemove 'Credential','AllowServiceRestart'
 
     SetEmptyStringParamsToNull -PSBoundParametersIn $PSBoundParameters
 
@@ -122,19 +131,18 @@ function Set-TargetResource
     if ($AllowServiceRestart -eq $true)
     {
         #Remove existing PS sessions, as we're about to break them
-        RemoveExistingRemoteSession -VerbosePreference $VerbosePreference
+        RemoveExistingRemoteSession -Verbose:$VerbosePreference
 
-        Write-Verbose "Recycling MSExchangePowerShellAppPool and MSExchangePowerShellFrontEndAppPool"
+        Write-Verbose -Message 'Recycling MSExchangePowerShellAppPool and MSExchangePowerShellFrontEndAppPool'
 
         RestartAppPoolIfExists -Name MSExchangePowerShellAppPool
         RestartAppPoolIfExists -Name MSExchangePowerShellFrontEndAppPool
     }
     else
     {
-        Write-Warning "The configuration will not take effect until MSExchangePowerShellAppPool and MSExchangePowerShellFrontEndAppPool are manually recycled."
+        Write-Warning -Message 'The configuration will not take effect until MSExchangePowerShellAppPool and MSExchangePowerShellFrontEndAppPool are manually recycled.'
     }
 }
-
 
 function Test-TargetResource
 {
@@ -143,88 +151,97 @@ function Test-TargetResource
     [OutputType([System.Boolean])]
     param
     (
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.String]
         $Identity,
 
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.Management.Automation.PSCredential]
         [System.Management.Automation.Credential()]
         $Credential,
 
+        [Parameter()]
         [System.Boolean]
         $AllowServiceRestart = $false,
 
+        [Parameter()]
         [System.Boolean]
         $BasicAuthentication,
 
+        [Parameter()]
         [System.Boolean]
         $CertificateAuthentication,
 
+        [Parameter()]
         [System.String]
         $DomainController,
 
+        [Parameter()]
         [System.String]
         $ExternalUrl,
 
+        [Parameter()]
         [System.String]
         $InternalUrl,
 
+        [Parameter()]
         [System.Boolean]
         $RequireSSL,
 
+        [Parameter()]
         [System.Boolean]
         $WindowsAuthentication
     )
 
-    #Load helper module
-    Import-Module "$((Get-Item -LiteralPath "$($PSScriptRoot)").Parent.Parent.FullName)\Misc\xExchangeCommon.psm1" -Verbose:0
-
-    LogFunctionEntry -Parameters @{"Identity" = $Identity} -VerbosePreference $VerbosePreference
+    LogFunctionEntry -Parameters @{'Identity' = $Identity} -Verbose:$VerbosePreference
 
     #Establish remote Powershell session
-    GetRemoteExchangeSession -Credential $Credential -CommandsToLoad "Get-PowerShellVirtualDirectory" -VerbosePreference $VerbosePreference
+    GetRemoteExchangeSession -Credential $Credential -CommandsToLoad 'Get-PowerShellVirtualDirectory' -Verbose:$VerbosePreference
 
     $vdir = GetPowerShellVirtualDirectory @PSBoundParameters
 
+    $testResults = $true
+
     if ($null -eq $vdir)
     {
-        return $false
+        Write-Error -Message 'Unable to retrieve PowerShell Virtual Directory for server'
+
+        $testResults = $false
     }
     else
     {
-        if (!(VerifySetting -Name "BasicAuthentication" -Type "Boolean" -ExpectedValue $BasicAuthentication -ActualValue $vdir.BasicAuthentication -PSBoundParametersIn $PSBoundParameters -VerbosePreference $VerbosePreference))
+        if (!(VerifySetting -Name 'BasicAuthentication' -Type 'Boolean' -ExpectedValue $BasicAuthentication -ActualValue $vdir.BasicAuthentication -PSBoundParametersIn $PSBoundParameters -Verbose:$VerbosePreference))
         {
-            return $false
+            $testResults = $false
         }
 
-        if (!(VerifySetting -Name "CertificateAuthentication" -Type "Boolean" -ExpectedValue $CertificateAuthentication -ActualValue $vdir.CertificateAuthentication -PSBoundParametersIn $PSBoundParameters -VerbosePreference $VerbosePreference))
+        if (!(VerifySetting -Name 'CertificateAuthentication' -Type 'Boolean' -ExpectedValue $CertificateAuthentication -ActualValue $vdir.CertificateAuthentication -PSBoundParametersIn $PSBoundParameters -Verbose:$VerbosePreference))
         {
-            return $false
+            $testResults = $false
         }
 
-        if (!(VerifySetting -Name "ExternalUrl" -Type "String" -ExpectedValue $ExternalUrl -ActualValue $vdir.ExternalUrl.AbsoluteUri -PSBoundParametersIn $PSBoundParameters -VerbosePreference $VerbosePreference))
+        if (!(VerifySetting -Name 'ExternalUrl' -Type 'String' -ExpectedValue $ExternalUrl -ActualValue $vdir.ExternalUrl.AbsoluteUri -PSBoundParametersIn $PSBoundParameters -Verbose:$VerbosePreference))
         {
-            return $false
+            $testResults = $false
         }
 
-        if (!(VerifySetting -Name "InternalUrl" -Type "String" -ExpectedValue $InternalUrl -ActualValue $vdir.InternalUrl.AbsoluteUri -PSBoundParametersIn $PSBoundParameters -VerbosePreference $VerbosePreference))
+        if (!(VerifySetting -Name 'InternalUrl' -Type 'String' -ExpectedValue $InternalUrl -ActualValue $vdir.InternalUrl.AbsoluteUri -PSBoundParametersIn $PSBoundParameters -Verbose:$VerbosePreference))
         {
-            return $false
+            $testResults = $false
         }
 
-        if (!(VerifySetting -Name "RequireSSL" -Type "Boolean" -ExpectedValue $RequireSSL -ActualValue $vdir.RequireSSL -PSBoundParametersIn $PSBoundParameters -VerbosePreference $VerbosePreference))
+        if (!(VerifySetting -Name 'RequireSSL' -Type 'Boolean' -ExpectedValue $RequireSSL -ActualValue $vdir.RequireSSL -PSBoundParametersIn $PSBoundParameters -Verbose:$VerbosePreference))
         {
-            return $false
+            $testResults = $false
         }
 
-        if (!(VerifySetting -Name "WindowsAuthentication" -Type "Boolean" -ExpectedValue $WindowsAuthentication -ActualValue $vdir.WindowsAuthentication -PSBoundParametersIn $PSBoundParameters -VerbosePreference $VerbosePreference))
+        if (!(VerifySetting -Name 'WindowsAuthentication' -Type 'Boolean' -ExpectedValue $WindowsAuthentication -ActualValue $vdir.WindowsAuthentication -PSBoundParametersIn $PSBoundParameters -Verbose:$VerbosePreference))
         {
-            return $false
-        }       
+            $testResults = $false
+        }
     }
-    
-    return $true
+
+    return $testResults
 }
 
 function GetPowerShellVirtualDirectory
@@ -232,46 +249,51 @@ function GetPowerShellVirtualDirectory
     [CmdletBinding()]
     param
     (
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.String]
         $Identity,
 
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.Management.Automation.PSCredential]
         [System.Management.Automation.Credential()]
         $Credential,
 
+        [Parameter()]
         [System.Boolean]
         $AllowServiceRestart = $false,
 
+        [Parameter()]
         [System.Boolean]
         $BasicAuthentication,
 
+        [Parameter()]
         [System.Boolean]
         $CertificateAuthentication,
 
+        [Parameter()]
         [System.String]
         $DomainController,
 
+        [Parameter()]
         [System.String]
         $ExternalUrl,
 
+        [Parameter()]
         [System.String]
         $InternalUrl,
 
+        [Parameter()]
         [System.Boolean]
         $RequireSSL,
 
+        [Parameter()]
         [System.Boolean]
         $WindowsAuthentication
     )
 
-    RemoveParameters -PSBoundParametersIn $PSBoundParameters -ParamsToKeep "Identity","DomainController"
+    RemoveParameters -PSBoundParametersIn $PSBoundParameters -ParamsToKeep 'Identity','DomainController'
 
     return (Get-PowerShellVirtualDirectory @PSBoundParameters)
 }
 
 Export-ModuleMember -Function *-TargetResource
-
-
-

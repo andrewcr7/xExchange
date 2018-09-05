@@ -5,47 +5,46 @@ function Get-TargetResource
     [OutputType([System.Collections.Hashtable])]
     param
     (
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.String]
         $Server,
 
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.Management.Automation.PSCredential]
         [System.Management.Automation.Credential()]
         $Credential,
 
-        [parameter(Mandatory = $true)]
-        [ValidateSet("TCP","TLS","Dual")]
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('TCP','TLS','Dual')]
         [System.String]
         $UMStartupMode,
 
+        [Parameter()]
         [System.String]
         $DomainController
     )
 
-    #Load helper module
-    Import-Module "$((Get-Item -LiteralPath "$($PSScriptRoot)").Parent.Parent.FullName)\Misc\xExchangeCommon.psm1" -Verbose:0
+    LogFunctionEntry -Parameters @{'Server' = $Server} -Verbose:$VerbosePreference
 
-    LogFunctionEntry -Parameters @{"Server" = $Server} -VerbosePreference $VerbosePreference
+    Assert-IsSupportedWithExchangeVersion -ObjectOrOperationName 'xExchUMCallRouterSettings' -SupportedVersions '2013','2016'
 
     #Establish remote Powershell session
-    GetRemoteExchangeSession -Credential $Credential -CommandsToLoad "*UMCallRouterSettings" -VerbosePreference $VerbosePreference
+    GetRemoteExchangeSession -Credential $Credential -CommandsToLoad '*UMCallRouterSettings' -Verbose:$VerbosePreference
 
-    RemoveParameters -PSBoundParametersIn $PSBoundParameters -ParamsToKeep "Server","DomainController"
+    RemoveParameters -PSBoundParametersIn $PSBoundParameters -ParamsToKeep 'Server','DomainController'
 
     $umService = Get-UMCallRouterSettings @PSBoundParameters
 
     if ($null -ne $umService)
     {
         $returnValue = @{
-            Server = $Server
-            UMStartupMode = $umService.UMStartupMode
+            Server        = [System.String] $Server
+            UMStartupMode = [System.String] $umService.UMStartupMode
         }
     }
 
     $returnValue
 }
-
 
 function Set-TargetResource
 {
@@ -53,37 +52,36 @@ function Set-TargetResource
     [CmdletBinding()]
     param
     (
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.String]
         $Server,
 
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.Management.Automation.PSCredential]
         [System.Management.Automation.Credential()]
         $Credential,
 
-        [parameter(Mandatory = $true)]
-        [ValidateSet("TCP","TLS","Dual")]
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('TCP','TLS','Dual')]
         [System.String]
         $UMStartupMode,
 
+        [Parameter()]
         [System.String]
         $DomainController
     )
 
-    #Load helper module
-    Import-Module "$((Get-Item -LiteralPath "$($PSScriptRoot)").Parent.Parent.FullName)\Misc\xExchangeCommon.psm1" -Verbose:0
+    LogFunctionEntry -Parameters @{'Server' = $Server} -Verbose:$VerbosePreference
 
-    LogFunctionEntry -Parameters @{"Server" = $Server} -VerbosePreference $VerbosePreference
+    Assert-IsSupportedWithExchangeVersion -ObjectOrOperationName 'xExchUMCallRouterSettings' -SupportedVersions '2013','2016'
 
     #Establish remote Powershell session
-    GetRemoteExchangeSession -Credential $Credential -CommandsToLoad "*UMCallRouterSettings" -VerbosePreference $VerbosePreference
+    GetRemoteExchangeSession -Credential $Credential -CommandsToLoad '*UMCallRouterSettings' -Verbose:$VerbosePreference
 
-    RemoveParameters -PSBoundParametersIn $PSBoundParameters -ParamsToRemove "Credential"
+    RemoveParameters -PSBoundParametersIn $PSBoundParameters -ParamsToRemove 'Credential'
 
     Set-UMCallRouterSettings @PSBoundParameters
 }
-
 
 function Test-TargetResource
 {
@@ -92,48 +90,48 @@ function Test-TargetResource
     [OutputType([System.Boolean])]
     param
     (
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.String]
         $Server,
 
-        [parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true)]
         [System.Management.Automation.PSCredential]
         [System.Management.Automation.Credential()]
         $Credential,
 
-        [parameter(Mandatory = $true)]
-        [ValidateSet("TCP","TLS","Dual")]
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('TCP','TLS','Dual')]
         [System.String]
         $UMStartupMode,
 
+        [Parameter()]
         [System.String]
         $DomainController
     )
 
-    #Load helper module
-    Import-Module "$((Get-Item -LiteralPath "$($PSScriptRoot)").Parent.Parent.FullName)\Misc\xExchangeCommon.psm1" -Verbose:0
+    LogFunctionEntry -Parameters @{'Server' = $Server} -Verbose:$VerbosePreference
 
-    LogFunctionEntry -Parameters @{"Server" = $Server} -VerbosePreference $VerbosePreference
+    Assert-IsSupportedWithExchangeVersion -ObjectOrOperationName 'xExchUMCallRouterSettings' -SupportedVersions '2013','2016'
 
     $umService = Get-TargetResource @PSBoundParameters
 
+    $testResults = $true
+
     if ($null -eq $umService)
     {
-        return $false
+        Write-Error -Message 'Unable to retrieve UM Call Router settings for server'
+
+        $testResults = $false
     }
     else
     {
-        if (!(VerifySetting -Name "UMStartupMode" -Type "String" -ExpectedValue $UMStartupMode -ActualValue $umService.UMStartupMode -PSBoundParametersIn $PSBoundParameters -VerbosePreference $VerbosePreference))
+        if (!(VerifySetting -Name 'UMStartupMode' -Type 'String' -ExpectedValue $UMStartupMode -ActualValue $umService.UMStartupMode -PSBoundParametersIn $PSBoundParameters -Verbose:$VerbosePreference))
         {
-            return $false
-        }        
+            $testResults = $false
+        }
     }
 
-    return $true
+    return $testResults
 }
 
-
 Export-ModuleMember -Function *-TargetResource
-
-
-
